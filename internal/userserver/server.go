@@ -14,7 +14,9 @@ func NewServer(userManager bizuserinters.UserManager) userpb.UserServicerServer 
 		return nil
 	}
 
-	return &serverImpl{}
+	return &serverImpl{
+		userManager: userManager,
+	}
 }
 
 type serverImpl struct {

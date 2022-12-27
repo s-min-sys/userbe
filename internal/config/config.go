@@ -13,6 +13,7 @@ type Config struct {
 	Logger l.Wrapper `yaml:"-"`
 
 	Listen        string                            `yaml:"Listen"`
+	WebListen     string                            `yaml:"WebListen"`
 	GRPCTLSConfig *servicetoolset.GRPCTlsFileConfig `yaml:"GRPCTLSConfig"`
 
 	RedisDSN     string `yaml:"RedisDSN"`
