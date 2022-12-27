@@ -318,3 +318,26 @@ func (impl *serverImpl) RenewToken(ctx context.Context, request *userpb.RenewTok
 		TokenInfo: po.UserTokenInfo2Pb(userTokenInfo),
 	}, nil
 }
+
+func (impl *serverImpl) Logout(ctx context.Context, request *userpb.LogoutRequest) (*userpb.LogoutResponse, error) {
+	if request == nil || request.ValidateAll() != nil {
+		return &userpb.LogoutResponse{
+			Status: &userpb.Status{
+				Code: userpb.Code_CODE_INVALID_ARGS_ERROR,
+			},
+		}, nil
+	}
+
+	token, err := ExtractTokenFromGRPCContext(ctx)
+	if err != nil {
+		return &userpb.LogoutResponse{
+			Status: po.StatusCode2PbWithError(bizuserinters.StatusCodePermissionError, err),
+		}, nil
+	}
+
+	status := impl.userManager.Logout(ctx, token)
+
+	return &userpb.LogoutResponse{
+		Status: po.Status2Pb(status),
+	}, nil
+}
