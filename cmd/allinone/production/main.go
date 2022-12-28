@@ -13,6 +13,7 @@ import (
 	"github.com/sbasestarter/bizuserlib/impl/mongo/model/authenticator/model"
 	"github.com/sbasestarter/bizuserlib/impl/redis/tokenmanager"
 	"github.com/sbasestarter/bizuserlib/impl/redis/usertokenmanager"
+	"github.com/sbasestarter/bizuserlib/sso"
 	"github.com/sgostarter/libeasygo/stg/mongoex"
 	"github.com/sgostarter/libeasygo/stg/redisex"
 	"github.com/sgostarter/libservicetoolset/servicetoolset"
@@ -62,7 +63,7 @@ func main() {
 	}
 
 	dbModel := model.NewMongoDBModel(mongoCli, opts.Auth.AuthSource, "users", tokenManager, nil)
-	instances := server.NewInstances(tokenManager, jwtDataStorage, dbModel)
+	instances := server.NewInstances(tokenManager, jwtDataStorage, dbModel, sso.NewCfgSSO(cfg.SSOJumpWhiteList))
 
 	err = s.Start(func(s *grpc.Server) error {
 		userpb.RegisterUserServicerServer(s, userserver.NewServer(instances.UserManager))

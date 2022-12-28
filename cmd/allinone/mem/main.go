@@ -11,6 +11,7 @@ import (
 	"github.com/s-min-sys/userbe/internal/server"
 	"github.com/s-min-sys/userbe/internal/userserver"
 	"github.com/sbasestarter/bizuserlib/model/authenticator/model"
+	"github.com/sbasestarter/bizuserlib/sso"
 	"github.com/sbasestarter/bizuserlib/tokenmanager"
 	"github.com/sbasestarter/bizuserlib/usertokenmanager"
 	"github.com/sgostarter/libservicetoolset/servicetoolset"
@@ -45,7 +46,7 @@ func main() {
 	tokenManager := tokenmanager.NewMemoryTokenManager()
 	jwtDataStorage := usertokenmanager.NewMemoryJWTDataStorage()
 	dbModel := model.NewMemoryDBModel(tokenManager)
-	instances := server.NewInstances(tokenManager, jwtDataStorage, dbModel)
+	instances := server.NewInstances(tokenManager, jwtDataStorage, dbModel, sso.NewCfgSSO(cfg.SSOJumpWhiteList))
 
 	err = s.Start(func(s *grpc.Server) error {
 		userpb.RegisterUserServicerServer(s, userserver.NewServer(instances.UserManager))

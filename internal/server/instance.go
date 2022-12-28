@@ -22,7 +22,7 @@ type Instances struct {
 }
 
 func NewInstances(tokenManagerAll bizuserinters.TokenManagerAll, jwtDataStorage usertokenmanagerinters.JWTDataStorage,
-	dbModel authenticatorinters.DBModel) *Instances {
+	dbModel authenticatorinters.DBModel, s bizuserlib.SSO) *Instances {
 	userTokenManager := usertokenmanager.NewJWTUserTokenManager("x", jwtDataStorage)
 	ply := policy.DefaultConditionAuthenticatorPolicy(tokenManagerAll)
 
@@ -30,7 +30,7 @@ func NewInstances(tokenManagerAll bizuserinters.TokenManagerAll, jwtDataStorage 
 
 	userManager := bizuserlib.NewUserManager(tokenManagerAll, userTokenManager,
 		ply, ply, ply, ply,
-		userManagerModel, dbModel, nil)
+		userManagerModel, dbModel, s, nil)
 
 	tokenManagerModel := authenticator.NewDirectTokenManagerModel(tokenManagerAll)
 	userPassModel := model.NewUserPassModel(dbModel, tokenManagerModel)

@@ -33,7 +33,7 @@ func (impl *serverImpl) RegisterBegin(ctx context.Context, request *userpb.Regis
 		}, nil
 	}
 
-	bizID, neededOrEvent, status := impl.userManager.RegisterBegin(ctx)
+	bizID, neededOrEvent, status := impl.userManager.RegisterBegin(ctx, request.GetSsoJumpUrl())
 
 	return &userpb.RegisterBeginResponse{
 		Status:         po.Status2Pb(status),
@@ -68,12 +68,13 @@ func (impl *serverImpl) RegisterEnd(ctx context.Context, request *userpb.Registe
 		}, nil
 	}
 
-	userID, token, status := impl.userManager.RegisterEnd(ctx, request.GetBizId())
+	userID, token, ssoToken, status := impl.userManager.RegisterEnd(ctx, request.GetBizId())
 
 	return &userpb.RegisterEndResponse{
-		Status: po.Status2Pb(status),
-		UserId: simencrypt.EncryptUInt64(userID),
-		Token:  token,
+		Status:   po.Status2Pb(status),
+		UserId:   simencrypt.EncryptUInt64(userID),
+		Token:    token,
+		SsoToken: ssoToken,
 	}, nil
 }
 
@@ -86,7 +87,7 @@ func (impl *serverImpl) LoginBegin(ctx context.Context, request *userpb.LoginBeg
 		}, nil
 	}
 
-	bizID, neededOrEvent, status := impl.userManager.LoginBegin(ctx)
+	bizID, neededOrEvent, status := impl.userManager.LoginBegin(ctx, request.GetSsoJumpUrl())
 
 	return &userpb.LoginBeginResponse{
 		Status:         po.Status2Pb(status),
@@ -121,12 +122,13 @@ func (impl *serverImpl) LoginEnd(ctx context.Context, request *userpb.LoginEndRe
 		}, nil
 	}
 
-	userID, token, status := impl.userManager.LoginEnd(ctx, request.GetBizId())
+	userID, token, ssoToken, status := impl.userManager.LoginEnd(ctx, request.GetBizId())
 
 	return &userpb.LoginEndResponse{
-		Status: po.Status2Pb(status),
-		UserId: simencrypt.EncryptUInt64(userID),
-		Token:  token,
+		Status:   po.Status2Pb(status),
+		UserId:   simencrypt.EncryptUInt64(userID),
+		Token:    token,
+		SsoToken: ssoToken,
 	}, nil
 }
 
@@ -286,11 +288,12 @@ func (impl *serverImpl) CheckToken(ctx context.Context, request *userpb.CheckTok
 		}, nil
 	}
 
-	userTokenInfo, status := impl.userManager.CheckToken(ctx, token)
+	ssoToken, userTokenInfo, status := impl.userManager.CheckToken(ctx, token, request.GetSsoJumpUrl())
 
 	return &userpb.CheckTokenResponse{
 		Status:    po.Status2Pb(status),
 		TokenInfo: po.UserTokenInfo2Pb(userTokenInfo),
+		SsoToken:  ssoToken,
 	}, nil
 }
 

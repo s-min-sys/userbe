@@ -18,6 +18,8 @@ type Config struct {
 
 	RedisDSN     string `yaml:"RedisDSN"`
 	UserMongoDSN string `yaml:"UserMongoDSN"`
+
+	SSOJumpWhiteList []string `yaml:"SSOJumpWhiteList"`
 }
 
 var (
