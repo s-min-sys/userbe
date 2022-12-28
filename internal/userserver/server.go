@@ -9,19 +9,21 @@ import (
 	"github.com/sgostarter/libeasygo/crypt/simencrypt"
 )
 
-func NewServer(userManager bizuserinters.UserManager) userpb.UserServicerServer {
+func NewServer(userManager bizuserinters.UserManager, defaultDomain string) userpb.UserServicerServer {
 	if userManager == nil {
 		return nil
 	}
 
 	return &serverImpl{
-		userManager: userManager,
+		userManager:   userManager,
+		defaultDomain: defaultDomain,
 	}
 }
 
 type serverImpl struct {
 	userpb.UnimplementedUserServicerServer
-	userManager bizuserinters.UserManager
+	userManager   bizuserinters.UserManager
+	defaultDomain string
 }
 
 func (impl *serverImpl) RegisterBegin(ctx context.Context, request *userpb.RegisterBeginRequest) (*userpb.RegisterBeginResponse, error) {
@@ -69,11 +71,22 @@ func (impl *serverImpl) RegisterEnd(ctx context.Context, request *userpb.Registe
 	}
 
 	userID, token, ssoToken, status := impl.userManager.RegisterEnd(ctx, request.GetBizId())
+	if status.Code != bizuserinters.StatusCodeOk {
+		return &userpb.RegisterEndResponse{
+			Status: po.Status2Pb(status),
+		}, nil
+	}
+
+	err := impl.SetUserTokenCookie(ctx, token.Token, token.Expiration)
+	if err != nil {
+		return &userpb.RegisterEndResponse{
+			Status: po.StatusCode2PbWithError(bizuserinters.StatusCodeInternalError, err),
+		}, nil
+	}
 
 	return &userpb.RegisterEndResponse{
 		Status:   po.Status2Pb(status),
 		UserId:   simencrypt.EncryptUInt64(userID),
-		Token:    token,
 		SsoToken: ssoToken,
 	}, nil
 }
@@ -123,11 +136,22 @@ func (impl *serverImpl) LoginEnd(ctx context.Context, request *userpb.LoginEndRe
 	}
 
 	userID, token, ssoToken, status := impl.userManager.LoginEnd(ctx, request.GetBizId())
+	if status.Code != bizuserinters.StatusCodeOk {
+		return &userpb.LoginEndResponse{
+			Status: po.Status2Pb(status),
+		}, nil
+	}
+
+	err := impl.SetUserTokenCookie(ctx, token.Token, token.Expiration)
+	if err != nil {
+		return &userpb.LoginEndResponse{
+			Status: po.StatusCode2PbWithError(bizuserinters.StatusCodeInternalError, err),
+		}, nil
+	}
 
 	return &userpb.LoginEndResponse{
 		Status:   po.Status2Pb(status),
 		UserId:   simencrypt.EncryptUInt64(userID),
-		Token:    token,
 		SsoToken: ssoToken,
 	}, nil
 }
@@ -314,10 +338,22 @@ func (impl *serverImpl) RenewToken(ctx context.Context, request *userpb.RenewTok
 	}
 
 	newToken, userTokenInfo, status := impl.userManager.RenewToken(ctx, token)
+	if status.Code != bizuserinters.StatusCodeOk {
+		return &userpb.RenewTokenResponse{
+			Status: po.Status2Pb(status),
+		}, nil
+	}
+
+	err = impl.SetUserTokenCookie(ctx, newToken.Token, newToken.Expiration)
+	if err != nil {
+		return &userpb.RenewTokenResponse{
+			Status: po.StatusCode2PbWithError(bizuserinters.StatusCodeInternalError, err),
+		}, nil
+	}
 
 	return &userpb.RenewTokenResponse{
 		Status:    po.Status2Pb(status),
-		NewToken:  newToken,
+		NewToken:  newToken.Token,
 		TokenInfo: po.UserTokenInfo2Pb(userTokenInfo),
 	}, nil
 }

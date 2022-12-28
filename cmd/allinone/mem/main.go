@@ -49,7 +49,7 @@ func main() {
 	instances := server.NewInstances(tokenManager, jwtDataStorage, dbModel, sso.NewCfgSSO(cfg.SSOJumpWhiteList))
 
 	err = s.Start(func(s *grpc.Server) error {
-		userpb.RegisterUserServicerServer(s, userserver.NewServer(instances.UserManager))
+		userpb.RegisterUserServicerServer(s, userserver.NewServer(instances.UserManager, cfg.DefaultDomain))
 		userpb.RegisterAuthenticatorUserPassServer(s, userpass.NewServer(instances.UserPassAuthenticator))
 		userpb.RegisterAuthenticatorGoogle2FaServer(s, google2fa.NewServer(instances.Google2FAAuthenticator))
 		userpb.RegisterAuthenticatorAdminServer(s, admin.NewServer(instances.AdminAuthenticator))

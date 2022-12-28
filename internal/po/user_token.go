@@ -14,6 +14,6 @@ func UserTokenInfo2Pb(info *bizuserinters.UserTokenInfo) *userpb.UserTokenInfo {
 		Id:       info.ID,
 		UserName: info.UserName,
 		StartAt:  info.StartAt.Unix(),
-		Age:      int64(info.Age.Seconds()),
+		Age:      int64(info.Expiration.Seconds()),
 	}
 }

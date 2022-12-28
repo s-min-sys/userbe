@@ -2,36 +2,58 @@ package userserver
 
 import (
 	"context"
+	"net/http"
+	"strings"
+	"time"
 
-	"github.com/sgostarter/i/commerr"
+	"github.com/s-min-sys/userbe/pkg/grpctoken"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
 
-const (
-	tokenKeyOnMetadata = "user_token"
-)
-
 func ExtractTokenFromGRPCContext(ctx context.Context) (token string, err error) {
+	token = grpctoken.GetStringFromGRPCContext(ctx, grpctoken.TokenKeyOnMetadata)
+
+	return
+}
+
+func (impl *serverImpl) SetUserTokenCookie(ctx context.Context, token string, expiration time.Duration) error {
+	domain := impl.domainFromGRPCContext(ctx)
+
+	if domain == "" {
+		domain = impl.defaultDomain
+	}
+
+	cookie := http.Cookie{
+		Domain:   domain,
+		Name:     grpctoken.TokenKeyOnMetadata,
+		Value:    token,
+		Path:     "/",
+		HttpOnly: true,
+		MaxAge:   int(expiration.Seconds()),
+	}
+
+	return grpc.SendHeader(ctx, metadata.Pairs("Set-Cookie", cookie.String()))
+}
+
+func (impl *serverImpl) domainFromGRPCContext(ctx context.Context) (domain string) {
 	md, ok := metadata.FromIncomingContext(ctx)
-	if !ok {
-		err = commerr.ErrUnauthenticated
-
-		return
+	if ok {
+		values := md.Get("origin")
+		if len(values) > 0 {
+			domain = values[0]
+		}
 	}
 
-	tokens := md.Get(tokenKeyOnMetadata)
-	if len(tokens) == 0 || tokens[0] == "" {
-		err = commerr.ErrUnauthenticated
-
-		return
+	if idx := strings.Index(domain, "://"); idx != -1 {
+		domain = domain[idx+3:]
 	}
 
-	token = tokens[0]
-	if token == "" {
-		err = commerr.ErrNotFound
-
-		return
+	if idx := strings.Index(domain, ":"); idx != -1 {
+		domain = domain[0:idx]
 	}
+
+	domain = strings.Trim(domain, " \r\n\t")
 
 	return
 }

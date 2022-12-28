@@ -3,8 +3,8 @@ module github.com/s-min-sys/userbe
 go 1.19
 
 require (
-	github.com/s-min-sys/protorepo v0.0.2
-	github.com/sbasestarter/bizuserlib v0.0.0-20221228045549-9bbcfa408c10
+	github.com/s-min-sys/protorepo v0.0.3
+	github.com/sbasestarter/bizuserlib v0.0.0-20221228074324-f2faa078eee4
 	github.com/sgostarter/i v0.1.13
 	github.com/sgostarter/libconfig v0.0.0-20220806130947-ce83e9abe6a4
 	github.com/sgostarter/libeasygo v0.1.38

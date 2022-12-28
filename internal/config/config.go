@@ -19,6 +19,7 @@ type Config struct {
 	RedisDSN     string `yaml:"RedisDSN"`
 	UserMongoDSN string `yaml:"UserMongoDSN"`
 
+	DefaultDomain    string   `yaml:"DefaultDomain"`
 	SSOJumpWhiteList []string `yaml:"SSOJumpWhiteList"`
 }
 
