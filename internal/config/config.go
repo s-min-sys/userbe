@@ -15,6 +15,7 @@ type Config struct {
 	Listen        string                            `yaml:"Listen"`
 	WebListen     string                            `yaml:"WebListen"`
 	GRPCTLSConfig *servicetoolset.GRPCTlsFileConfig `yaml:"GRPCTLSConfig"`
+	SSOHttpListen string                            `yaml:"SSOHttpListen"`
 
 	RedisDSN     string `yaml:"RedisDSN"`
 	UserMongoDSN string `yaml:"UserMongoDSN"`

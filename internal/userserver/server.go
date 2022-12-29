@@ -156,6 +156,39 @@ func (impl *serverImpl) LoginEnd(ctx context.Context, request *userpb.LoginEndRe
 	}, nil
 }
 
+func (impl *serverImpl) SSOLogin(ctx context.Context, request *userpb.SSOLoginRequest) (*userpb.SSOLoginResponse, error) {
+	if request == nil || request.ValidateAll() != nil {
+		return &userpb.SSOLoginResponse{
+			Status: &userpb.Status{
+				Code: userpb.Code_CODE_INVALID_ARGS_ERROR,
+			},
+		}, nil
+	}
+
+	userID, tokenInfo, status := impl.userManager.SSOLogin(ctx, request.GetSsoToken())
+	if status.Code != bizuserinters.StatusCodeOk {
+		return &userpb.SSOLoginResponse{
+			Status: po.Status2Pb(status),
+		}, nil
+	}
+
+	if request.GetSetCookieFlag() {
+		err := impl.SetUserTokenCookie(ctx, tokenInfo.Token, tokenInfo.Expiration)
+		if err != nil {
+			return &userpb.SSOLoginResponse{
+				Status: po.StatusCode2PbWithError(bizuserinters.StatusCodeInternalError, err),
+			}, nil
+		}
+	}
+
+	return &userpb.SSOLoginResponse{
+		Status:                 po.Status2Pb(status),
+		UserId:                 simencrypt.EncryptUInt64(userID),
+		Token:                  tokenInfo.Token,
+		TokenExpirationSeconds: int32(tokenInfo.Expiration.Seconds()),
+	}, nil
+}
+
 func (impl *serverImpl) ChangeBegin(ctx context.Context, request *userpb.ChangeBeginRequest) (*userpb.ChangeBeginResponse, error) {
 	if request == nil || request.ValidateAll() != nil {
 		return &userpb.ChangeBeginResponse{

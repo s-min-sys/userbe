@@ -9,6 +9,7 @@ import (
 	"github.com/s-min-sys/userbe/internal/authenticatorserver/userpass"
 	"github.com/s-min-sys/userbe/internal/config"
 	"github.com/s-min-sys/userbe/internal/server"
+	"github.com/s-min-sys/userbe/internal/ssohttp"
 	"github.com/s-min-sys/userbe/internal/userserver"
 	"github.com/sbasestarter/bizuserlib/model/authenticator/model"
 	"github.com/sbasestarter/bizuserlib/sso"
@@ -48,8 +49,17 @@ func main() {
 	dbModel := model.NewMemoryDBModel(tokenManager)
 	instances := server.NewInstances(tokenManager, jwtDataStorage, dbModel, sso.NewCfgSSO(cfg.SSOJumpWhiteList))
 
+	us := userserver.NewServer(instances.UserManager, cfg.DefaultDomain)
+
+	if cfg.SSOHttpListen != "" {
+		go func() {
+			ssoHTTPServer := ssohttp.NewServer(us, cfg.DefaultDomain)
+			ssoHTTPServer.ListenAndServe(cfg.SSOHttpListen)
+		}()
+	}
+
 	err = s.Start(func(s *grpc.Server) error {
-		userpb.RegisterUserServicerServer(s, userserver.NewServer(instances.UserManager, cfg.DefaultDomain))
+		userpb.RegisterUserServicerServer(s, us)
 		userpb.RegisterAuthenticatorUserPassServer(s, userpass.NewServer(instances.UserPassAuthenticator))
 		userpb.RegisterAuthenticatorGoogle2FaServer(s, google2fa.NewServer(instances.Google2FAAuthenticator))
 		userpb.RegisterAuthenticatorAdminServer(s, admin.NewServer(instances.AdminAuthenticator))
