@@ -36,6 +36,25 @@ func (impl *serverImpl) SetUserTokenCookie(ctx context.Context, token string, ex
 	return grpc.SendHeader(ctx, metadata.Pairs("Set-Cookie", cookie.String()))
 }
 
+func (impl *serverImpl) UnsetUserTokenCookie(ctx context.Context, token string) error {
+	domain := impl.domainFromGRPCContext(ctx)
+
+	if domain == "" {
+		domain = impl.defaultDomain
+	}
+
+	cookie := http.Cookie{
+		Domain:   domain,
+		Name:     grpctoken.TokenKeyOnMetadata,
+		Value:    token,
+		Path:     "/",
+		HttpOnly: true,
+		MaxAge:   -1,
+	}
+
+	return grpc.SendHeader(ctx, metadata.Pairs("Set-Cookie", cookie.String()))
+}
+
 func (impl *serverImpl) domainFromGRPCContext(ctx context.Context) (domain string) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if ok {

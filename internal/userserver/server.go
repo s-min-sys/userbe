@@ -374,6 +374,8 @@ func (impl *serverImpl) Logout(ctx context.Context, request *userpb.LogoutReques
 		}, nil
 	}
 
+	_ = impl.UnsetUserTokenCookie(ctx, token)
+
 	status := impl.userManager.Logout(ctx, token)
 
 	return &userpb.LogoutResponse{
