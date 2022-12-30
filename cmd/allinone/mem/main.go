@@ -47,7 +47,7 @@ func main() {
 	tokenManager := tokenmanager.NewMemoryTokenManager()
 	jwtDataStorage := usertokenmanager.NewMemoryJWTDataStorage()
 	dbModel := model.NewMemoryDBModel(tokenManager)
-	instances := server.NewInstances(tokenManager, jwtDataStorage, dbModel, sso.NewCfgSSO(cfg.SSOJumpWhiteList))
+	instances := server.NewInstances(tokenManager, jwtDataStorage, dbModel, sso.NewCfgSSO(cfg.SSOJumpWhiteList), cfg)
 
 	us := userserver.NewServer(instances.UserManager, cfg.DefaultDomain)
 

@@ -22,6 +22,17 @@ type Config struct {
 
 	DefaultDomain    string   `yaml:"DefaultDomain"`
 	SSOJumpWhiteList []string `yaml:"SSOJumpWhiteList"`
+
+	DebugCfg DebugCfg `yaml:"DebugCfg"`
+}
+
+type DebugCfgAuthenticatorGoogle2FA struct {
+	FakeQrCode    string `yaml:"FakeQrCode"`
+	FakeSecretKey string `yaml:"FakeSecretKey"`
+}
+
+type DebugCfg struct {
+	AuthenticatorGoogle2FA *DebugCfgAuthenticatorGoogle2FA `yaml:"AuthenticatorGoogle2FA"`
 }
 
 var (

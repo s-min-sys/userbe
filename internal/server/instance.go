@@ -1,6 +1,7 @@
 package server
 
 import (
+	"github.com/s-min-sys/userbe/internal/config"
 	"github.com/sbasestarter/bizuserlib"
 	"github.com/sbasestarter/bizuserlib/authenticator/admin"
 	"github.com/sbasestarter/bizuserlib/authenticator/google2fa"
@@ -22,7 +23,7 @@ type Instances struct {
 }
 
 func NewInstances(tokenManagerAll bizuserinters.TokenManagerAll, jwtDataStorage usertokenmanagerinters.JWTDataStorage,
-	dbModel authenticatorinters.DBModel, s bizuserlib.SSO) *Instances {
+	dbModel authenticatorinters.DBModel, s bizuserlib.SSO, cfg *config.Config) *Instances {
 	userTokenManager := usertokenmanager.NewJWTUserTokenManager("x", jwtDataStorage)
 	ply := policy.DefaultConditionAuthenticatorPolicy(tokenManagerAll)
 
@@ -39,7 +40,15 @@ func NewInstances(tokenManagerAll bizuserinters.TokenManagerAll, jwtDataStorage 
 
 	cacheMode := authenticator.NewMemoryCacheModel()
 	google2FAModel := model.NewGoogle2FAModel(dbModel, tokenManagerModel, cacheMode)
+
 	google2FAAuthenticator := google2fa.NewAuthenticator(google2FAModel, "stw.com")
+
+	if cfg.DebugCfg.AuthenticatorGoogle2FA != nil {
+		google2FAAuthenticator = google2fa.NewAuthenticatorEx(google2FAModel, "stw.com", &google2fa.DebugConfig{
+			FakeQrURL:     cfg.DebugCfg.AuthenticatorGoogle2FA.FakeQrCode,
+			FakeSecretKey: cfg.DebugCfg.AuthenticatorGoogle2FA.FakeSecretKey,
+		})
+	}
 
 	adminModel := model.NewAdminModel(dbModel, tokenManagerModel)
 	adminAuthenticator := admin.NewAuthenticator(adminModel)

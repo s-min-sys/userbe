@@ -64,7 +64,7 @@ func main() {
 	}
 
 	dbModel := model.NewMongoDBModel(mongoCli, opts.Auth.AuthSource, "users", tokenManager, nil)
-	instances := server.NewInstances(tokenManager, jwtDataStorage, dbModel, sso.NewCfgSSO(cfg.SSOJumpWhiteList))
+	instances := server.NewInstances(tokenManager, jwtDataStorage, dbModel, sso.NewCfgSSO(cfg.SSOJumpWhiteList), cfg)
 
 	us := userserver.NewServer(instances.UserManager, cfg.DefaultDomain)
 
