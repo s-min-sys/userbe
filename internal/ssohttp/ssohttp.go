@@ -10,6 +10,7 @@ import (
 
 	"github.com/s-min-sys/protorepo/gens/userpb"
 	"github.com/s-min-sys/userbe/pkg/grpctoken"
+	"google.golang.org/grpc/metadata"
 )
 
 type Server interface {
@@ -44,6 +45,7 @@ type serverImpl struct {
 func (impl *serverImpl) ListenAndServe(address string) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/sso/login", impl.SSOLogin)
+	mux.HandleFunc("/user/profile", impl.UserProfile)
 
 	s := http.Server{
 		Addr:              address,
@@ -52,6 +54,88 @@ func (impl *serverImpl) ListenAndServe(address string) {
 	}
 
 	_ = s.ListenAndServe()
+}
+
+type UserInfo struct {
+	ID       uint64 `json:"id"`
+	UserName string `json:"user_name"`
+}
+
+func (impl *serverImpl) UserProfile(writer http.ResponseWriter, request *http.Request) {
+	statusCode, userID, userName, err := impl.userProfile(request)
+	if statusCode != http.StatusOK {
+		writer.WriteHeader(statusCode)
+
+		if err != nil {
+			_, _ = writer.Write([]byte(err.Error()))
+		}
+
+		return
+	}
+
+	d, err := json.Marshal(&UserInfo{
+		ID:       userID,
+		UserName: userName,
+	})
+	if err != nil {
+		writer.WriteHeader(statusCode)
+
+		if err != nil {
+			_, _ = writer.Write([]byte(err.Error()))
+		}
+
+		return
+	}
+
+	writer.WriteHeader(http.StatusOK)
+	_, _ = writer.Write(d)
+}
+
+func (impl *serverImpl) userProfile(request *http.Request) (statusCode int, userID uint64, userName string, err error) {
+	defer request.Body.Close()
+
+	cookie, err := request.Cookie(grpctoken.TokenKeyOnMetadata)
+	if err != nil {
+		statusCode = http.StatusUnauthorized
+
+		return
+	}
+
+	if cookie.Value == "" {
+		statusCode = http.StatusUnauthorized
+
+		return
+	}
+
+	// direct call, so use NewIncomingContext
+	resp, err := impl.grpcServer.CheckToken(metadata.NewIncomingContext(request.Context(), metadata.New(map[string]string{
+		grpctoken.TokenKeyOnMetadata: cookie.Value,
+	})), &userpb.CheckTokenRequest{})
+	if err != nil {
+		statusCode = http.StatusInternalServerError
+
+		return
+	}
+
+	if resp == nil || resp.GetStatus() == nil {
+		statusCode = http.StatusInternalServerError
+
+		return
+	}
+
+	if resp.GetStatus().GetCode() != userpb.Code_CODE_OK {
+		statusCode = http.StatusInternalServerError
+		err = errors.New(resp.GetStatus().GetMessage())
+
+		return
+	}
+
+	userID = resp.GetTokenInfo().GetId()
+	userName = resp.GetTokenInfo().GetUserName()
+
+	statusCode = http.StatusOK
+
+	return
 }
 
 func (impl *serverImpl) SSOLogin(writer http.ResponseWriter, request *http.Request) {
