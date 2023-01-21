@@ -15,6 +15,7 @@ func User2Pb(userInfo *bizuserinters.UserInfo) *userpb.UserInfo {
 		UserName:      userInfo.UserName,
 		HasGoogle_2Fa: userInfo.HasGoogle2FA,
 		Admin:         userInfo.Admin,
+		Origin:        userInfo.Origin,
 	}
 }
 

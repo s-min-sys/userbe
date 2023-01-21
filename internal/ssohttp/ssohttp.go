@@ -35,6 +35,7 @@ type SSOLoginRequest struct {
 type SSOLoginResponse struct {
 	Token             string `json:"token"`
 	ExpirationSeconds int    `json:"expiration_seconds"`
+	Origin            string `json:"origin"`
 }
 
 type serverImpl struct {
@@ -59,10 +60,11 @@ func (impl *serverImpl) ListenAndServe(address string) {
 type UserInfo struct {
 	ID       uint64 `json:"id"`
 	UserName string `json:"user_name"`
+	Origin   string `json:"origin"`
 }
 
 func (impl *serverImpl) UserProfile(writer http.ResponseWriter, request *http.Request) {
-	statusCode, userID, userName, err := impl.userProfile(request)
+	statusCode, userID, userName, origin, err := impl.userProfile(request)
 	if statusCode != http.StatusOK {
 		writer.WriteHeader(statusCode)
 
@@ -76,6 +78,7 @@ func (impl *serverImpl) UserProfile(writer http.ResponseWriter, request *http.Re
 	d, err := json.Marshal(&UserInfo{
 		ID:       userID,
 		UserName: userName,
+		Origin:   origin,
 	})
 	if err != nil {
 		writer.WriteHeader(statusCode)
@@ -91,7 +94,7 @@ func (impl *serverImpl) UserProfile(writer http.ResponseWriter, request *http.Re
 	_, _ = writer.Write(d)
 }
 
-func (impl *serverImpl) userProfile(request *http.Request) (statusCode int, userID uint64, userName string, err error) {
+func (impl *serverImpl) userProfile(request *http.Request) (statusCode int, userID uint64, userName, origin string, err error) {
 	defer request.Body.Close()
 
 	cookie, err := request.Cookie(grpctoken.TokenKeyOnMetadata)
@@ -132,6 +135,7 @@ func (impl *serverImpl) userProfile(request *http.Request) (statusCode int, user
 
 	userID = resp.GetTokenInfo().GetId()
 	userName = resp.GetTokenInfo().GetUserName()
+	origin = resp.GetTokenInfo().GetOrigin()
 
 	statusCode = http.StatusOK
 
@@ -139,7 +143,7 @@ func (impl *serverImpl) userProfile(request *http.Request) (statusCode int, user
 }
 
 func (impl *serverImpl) SSOLogin(writer http.ResponseWriter, request *http.Request) {
-	statusCode, token, expirationSeconds, err := impl.ssoLogin(request)
+	statusCode, token, origin, expirationSeconds, err := impl.ssoLogin(request)
 	if statusCode != http.StatusOK {
 		writer.WriteHeader(statusCode)
 
@@ -169,6 +173,7 @@ func (impl *serverImpl) SSOLogin(writer http.ResponseWriter, request *http.Reque
 	d, err := json.Marshal(&SSOLoginResponse{
 		Token:             token,
 		ExpirationSeconds: expirationSeconds,
+		Origin:            origin,
 	})
 	if err != nil {
 		writer.WriteHeader(statusCode)
@@ -184,7 +189,7 @@ func (impl *serverImpl) SSOLogin(writer http.ResponseWriter, request *http.Reque
 	_, _ = writer.Write(d)
 }
 
-func (impl *serverImpl) ssoLogin(request *http.Request) (statusCode int, token string,
+func (impl *serverImpl) ssoLogin(request *http.Request) (statusCode int, token, origin string,
 	expirationSeconds int, err error) {
 	if !strings.EqualFold(request.Method, http.MethodPost) {
 		statusCode = http.StatusNotFound
@@ -240,6 +245,7 @@ func (impl *serverImpl) ssoLogin(request *http.Request) (statusCode int, token s
 	}
 
 	token = resp.GetToken()
+	origin = resp.GetOrigin()
 
 	statusCode = http.StatusOK
 	expirationSeconds = int(resp.GetTokenExpirationSeconds())

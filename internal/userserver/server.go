@@ -88,6 +88,7 @@ func (impl *serverImpl) RegisterEnd(ctx context.Context, request *userpb.Registe
 		Status:   po.Status2Pb(status),
 		UserId:   simencrypt.EncryptUInt64(userID),
 		SsoToken: ssoToken,
+		Origin:   token.Origin,
 	}, nil
 }
 
@@ -153,6 +154,7 @@ func (impl *serverImpl) LoginEnd(ctx context.Context, request *userpb.LoginEndRe
 		Status:   po.Status2Pb(status),
 		UserId:   simencrypt.EncryptUInt64(userID),
 		SsoToken: ssoToken,
+		Origin:   token.Origin,
 	}, nil
 }
 
@@ -186,6 +188,7 @@ func (impl *serverImpl) SSOLogin(ctx context.Context, request *userpb.SSOLoginRe
 		UserId:                 simencrypt.EncryptUInt64(userID),
 		Token:                  tokenInfo.Token,
 		TokenExpirationSeconds: int32(tokenInfo.Expiration.Seconds()),
+		Origin:                 tokenInfo.Origin,
 	}, nil
 }
 
@@ -345,11 +348,11 @@ func (impl *serverImpl) CheckToken(ctx context.Context, request *userpb.CheckTok
 		}, nil
 	}
 
-	ssoToken, userTokenInfo, status := impl.userManager.CheckToken(ctx, token, request.GetSsoJumpUrl())
+	ssoToken, origin, userTokenInfo, status := impl.userManager.CheckToken(ctx, token, request.GetSsoJumpUrl())
 
 	return &userpb.CheckTokenResponse{
 		Status:    po.Status2Pb(status),
-		TokenInfo: po.UserTokenInfo2Pb(userTokenInfo),
+		TokenInfo: po.UserTokenInfo2Pb(userTokenInfo, origin),
 		SsoToken:  ssoToken,
 	}, nil
 }
@@ -387,7 +390,7 @@ func (impl *serverImpl) RenewToken(ctx context.Context, request *userpb.RenewTok
 	return &userpb.RenewTokenResponse{
 		Status:    po.Status2Pb(status),
 		NewToken:  newToken.Token,
-		TokenInfo: po.UserTokenInfo2Pb(userTokenInfo),
+		TokenInfo: po.UserTokenInfo2Pb(userTokenInfo, newToken.Origin),
 	}, nil
 }
 

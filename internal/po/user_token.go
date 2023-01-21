@@ -5,7 +5,7 @@ import (
 	"github.com/sbasestarter/bizuserlib/bizuserinters"
 )
 
-func UserTokenInfo2Pb(info *bizuserinters.UserTokenInfo) *userpb.UserTokenInfo {
+func UserTokenInfo2Pb(info *bizuserinters.UserTokenInfo, origin string) *userpb.UserTokenInfo {
 	if info == nil {
 		return nil
 	}
@@ -15,5 +15,6 @@ func UserTokenInfo2Pb(info *bizuserinters.UserTokenInfo) *userpb.UserTokenInfo {
 		UserName: info.UserName,
 		StartAt:  info.StartAt.Unix(),
 		Age:      int64(info.Expiration.Seconds()),
+		Origin:   origin,
 	}
 }
