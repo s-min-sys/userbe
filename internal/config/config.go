@@ -15,13 +15,11 @@ type Config struct {
 	Listen        string                            `yaml:"Listen"`
 	WebListen     string                            `yaml:"WebListen"`
 	GRPCTLSConfig *servicetoolset.GRPCTlsFileConfig `yaml:"GRPCTLSConfig"`
-	SSOHttpListen string                            `yaml:"SSOHttpListen"`
 
 	RedisDSN     string `yaml:"RedisDSN"`
 	UserMongoDSN string `yaml:"UserMongoDSN"`
 
-	DefaultDomain    string   `yaml:"DefaultDomain"`
-	SSOJumpWhiteList []string `yaml:"SSOJumpWhiteList"`
+	DefaultDomain string `yaml:"DefaultDomain"`
 
 	DebugCfg DebugCfg `yaml:"DebugCfg"`
 }

@@ -3,13 +3,18 @@ module github.com/s-min-sys/userbe
 go 1.19
 
 require (
-	github.com/s-min-sys/protorepo v0.0.7
-	github.com/sbasestarter/bizuserlib v0.0.1
+	github.com/dgrijalva/jwt-go v3.2.0+incompatible
+	github.com/go-redis/redis/v8 v8.11.5
+	github.com/patrickmn/go-cache v2.1.0+incompatible
+	github.com/s-min-sys/protorepo v0.0.8
+	github.com/satori/go.uuid v1.2.0
+	github.com/sbasestarter/bizuserlib v0.0.2
 	github.com/sgostarter/i v0.1.13
 	github.com/sgostarter/libconfig v0.0.0-20220806130947-ce83e9abe6a4
 	github.com/sgostarter/libeasygo v0.1.38
 	github.com/sgostarter/liblogrus v0.0.9
 	github.com/sgostarter/libservicetoolset v0.0.32
+	github.com/spf13/cast v1.4.1
 	google.golang.org/grpc v1.51.0
 )
 
@@ -17,10 +22,8 @@ require (
 	github.com/cenkalti/backoff/v4 v4.1.1 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/desertbit/timer v0.0.0-20180107155436-c41aec40b27f // indirect
-	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/envoyproxy/protoc-gen-validate v0.1.0 // indirect
-	github.com/go-redis/redis/v8 v8.11.5 // indirect
 	github.com/godruoyi/go-snowflake v0.0.1 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
@@ -29,15 +32,12 @@ require (
 	github.com/kelseyhightower/envconfig v1.4.0 // indirect
 	github.com/klauspost/compress v1.13.6 // indirect
 	github.com/montanaflynn/stats v0.0.0-20171201202039-1bf9dbcd8cbe // indirect
-	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	github.com/rs/cors v1.7.0 // indirect
-	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/sgostarter/libexpression v0.0.2 // indirect
 	github.com/sgostarter/librediscovery v0.0.6 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
-	github.com/spf13/cast v1.4.1 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.1.1 // indirect
 	github.com/xdg-go/stringprep v1.0.3 // indirect

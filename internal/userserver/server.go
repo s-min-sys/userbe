@@ -2,28 +2,34 @@ package userserver
 
 import (
 	"context"
+	"time"
 
 	"github.com/s-min-sys/protorepo/gens/userpb"
 	"github.com/s-min-sys/userbe/internal/po"
+	"github.com/s-min-sys/userbe/internal/usertokenmanager/usertokenmanagerinters"
 	"github.com/sbasestarter/bizuserlib/bizuserinters"
 	"github.com/sgostarter/libeasygo/crypt/simencrypt"
 )
 
-func NewServer(userManager bizuserinters.UserManager, defaultDomain string) userpb.UserServicerServer {
+func NewServer(userManager bizuserinters.UserManager, userTokenManager usertokenmanagerinters.UserTokenManager, defaultDomain string) userpb.UserServicerServer {
 	if userManager == nil {
 		return nil
 	}
 
 	return &serverImpl{
-		userManager:   userManager,
-		defaultDomain: defaultDomain,
+		userManager:      userManager,
+		defaultDomain:    defaultDomain,
+		userTokenManager: userTokenManager,
 	}
 }
 
 type serverImpl struct {
 	userpb.UnimplementedUserServicerServer
-	userManager   bizuserinters.UserManager
-	defaultDomain string
+	userManager      bizuserinters.UserManager
+	defaultDomain    string
+	userTokenManager usertokenmanagerinters.UserTokenManager
+
+	defaultTokenExpiration time.Duration
 }
 
 func (impl *serverImpl) RegisterBegin(ctx context.Context, request *userpb.RegisterBeginRequest) (*userpb.RegisterBeginResponse, error) {
@@ -35,7 +41,7 @@ func (impl *serverImpl) RegisterBegin(ctx context.Context, request *userpb.Regis
 		}, nil
 	}
 
-	bizID, neededOrEvent, status := impl.userManager.RegisterBegin(ctx, request.GetSsoJumpUrl())
+	bizID, neededOrEvent, status := impl.userManager.RegisterBegin(ctx)
 
 	return &userpb.RegisterBeginResponse{
 		Status:         po.Status2Pb(status),
@@ -70,14 +76,30 @@ func (impl *serverImpl) RegisterEnd(ctx context.Context, request *userpb.Registe
 		}, nil
 	}
 
-	userID, token, ssoToken, status := impl.userManager.RegisterEnd(ctx, request.GetBizId())
+	userInfo, status := impl.userManager.RegisterEnd(ctx, request.GetBizId())
 	if status.Code != bizuserinters.StatusCodeOk {
 		return &userpb.RegisterEndResponse{
 			Status: po.Status2Pb(status),
 		}, nil
 	}
 
-	err := impl.SetUserTokenCookie(ctx, token.Token, token.Expiration)
+	///
+
+	tokenExpiration := impl.defaultTokenExpiration
+
+	token, status := impl.userTokenManager.GenToken(ctx, &usertokenmanagerinters.UserTokenInfo{
+		ID:         userInfo.ID,
+		UserName:   userInfo.UserName,
+		Expiration: tokenExpiration,
+	})
+
+	if status.Code != bizuserinters.StatusCodeOk {
+		return &userpb.RegisterEndResponse{
+			Status: po.Status2Pb(status),
+		}, nil
+	}
+
+	err := impl.SetUserTokenCookie(ctx, token, tokenExpiration)
 	if err != nil {
 		return &userpb.RegisterEndResponse{
 			Status: po.StatusCode2PbWithError(bizuserinters.StatusCodeInternalError, err),
@@ -85,10 +107,8 @@ func (impl *serverImpl) RegisterEnd(ctx context.Context, request *userpb.Registe
 	}
 
 	return &userpb.RegisterEndResponse{
-		Status:   po.Status2Pb(status),
-		UserId:   simencrypt.EncryptUInt64(userID),
-		SsoToken: ssoToken,
-		Origin:   token.Origin,
+		Status: po.Status2Pb(status),
+		UserId: simencrypt.EncryptUInt64(userInfo.ID),
 	}, nil
 }
 
@@ -101,7 +121,7 @@ func (impl *serverImpl) LoginBegin(ctx context.Context, request *userpb.LoginBeg
 		}, nil
 	}
 
-	bizID, neededOrEvent, status := impl.userManager.LoginBegin(ctx, request.GetSsoJumpUrl())
+	bizID, neededOrEvent, status := impl.userManager.LoginBegin(ctx)
 
 	return &userpb.LoginBeginResponse{
 		Status:         po.Status2Pb(status),
@@ -136,14 +156,31 @@ func (impl *serverImpl) LoginEnd(ctx context.Context, request *userpb.LoginEndRe
 		}, nil
 	}
 
-	userID, token, ssoToken, status := impl.userManager.LoginEnd(ctx, request.GetBizId())
+	userInfo, status := impl.userManager.LoginEnd(ctx, request.GetBizId())
 	if status.Code != bizuserinters.StatusCodeOk {
 		return &userpb.LoginEndResponse{
 			Status: po.Status2Pb(status),
 		}, nil
 	}
 
-	err := impl.SetUserTokenCookie(ctx, token.Token, token.Expiration)
+	///
+	expiration := impl.defaultTokenExpiration
+
+	token, status := impl.userTokenManager.GenToken(ctx, &usertokenmanagerinters.UserTokenInfo{
+		ID:         userInfo.ID,
+		UserName:   userInfo.UserName,
+		Expiration: expiration,
+	})
+
+	if status.Code != bizuserinters.StatusCodeOk {
+		return &userpb.LoginEndResponse{
+			Status: po.Status2Pb(status),
+		}, nil
+	}
+
+	///
+
+	err := impl.SetUserTokenCookie(ctx, token, expiration)
 	if err != nil {
 		return &userpb.LoginEndResponse{
 			Status: po.StatusCode2PbWithError(bizuserinters.StatusCodeInternalError, err),
@@ -151,44 +188,8 @@ func (impl *serverImpl) LoginEnd(ctx context.Context, request *userpb.LoginEndRe
 	}
 
 	return &userpb.LoginEndResponse{
-		Status:   po.Status2Pb(status),
-		UserId:   simencrypt.EncryptUInt64(userID),
-		SsoToken: ssoToken,
-		Origin:   token.Origin,
-	}, nil
-}
-
-func (impl *serverImpl) SSOLogin(ctx context.Context, request *userpb.SSOLoginRequest) (*userpb.SSOLoginResponse, error) {
-	if request == nil || request.ValidateAll() != nil {
-		return &userpb.SSOLoginResponse{
-			Status: &userpb.Status{
-				Code: userpb.Code_CODE_INVALID_ARGS_ERROR,
-			},
-		}, nil
-	}
-
-	userID, tokenInfo, status := impl.userManager.SSOLogin(ctx, request.GetSsoToken())
-	if status.Code != bizuserinters.StatusCodeOk {
-		return &userpb.SSOLoginResponse{
-			Status: po.Status2Pb(status),
-		}, nil
-	}
-
-	if request.GetSetCookieFlag() {
-		err := impl.SetUserTokenCookie(ctx, tokenInfo.Token, tokenInfo.Expiration)
-		if err != nil {
-			return &userpb.SSOLoginResponse{
-				Status: po.StatusCode2PbWithError(bizuserinters.StatusCodeInternalError, err),
-			}, nil
-		}
-	}
-
-	return &userpb.SSOLoginResponse{
-		Status:                 po.Status2Pb(status),
-		UserId:                 simencrypt.EncryptUInt64(userID),
-		Token:                  tokenInfo.Token,
-		TokenExpirationSeconds: int32(tokenInfo.Expiration.Seconds()),
-		Origin:                 tokenInfo.Origin,
+		Status: po.Status2Pb(status),
+		UserId: simencrypt.EncryptUInt64(userInfo.ID),
 	}, nil
 }
 
@@ -208,7 +209,15 @@ func (impl *serverImpl) ChangeBegin(ctx context.Context, request *userpb.ChangeB
 		}, nil
 	}
 
-	bizID, neededOrEvent, status := impl.userManager.ChangeBegin(ctx, token, po.AuthenticatorIdentitiesFromPb(request.GetAuthenticators()))
+	userTokenInfo, status := impl.userTokenManager.ExplainToken(ctx, token)
+	if status.Code != bizuserinters.StatusCodeOk {
+		return &userpb.ChangeBeginResponse{
+			Status: po.Status2Pb(status),
+		}, nil
+	}
+
+	bizID, neededOrEvent, status := impl.userManager.ChangeBegin(ctx, userTokenInfo.ID, userTokenInfo.UserName,
+		po.AuthenticatorIdentitiesFromPb(request.GetAuthenticators()))
 
 	return &userpb.ChangeBeginResponse{
 		Status:         po.Status2Pb(status),
@@ -266,7 +275,15 @@ func (impl *serverImpl) DeleteBegin(ctx context.Context, request *userpb.DeleteB
 		}, nil
 	}
 
-	bizID, neededOrEvent, status := impl.userManager.DeleteBegin(ctx, token, po.AuthenticatorIdentitiesFromPb(request.GetAuthenticators()))
+	userTokenInfo, status := impl.userTokenManager.ExplainToken(ctx, token)
+	if status.Code != bizuserinters.StatusCodeOk {
+		return &userpb.DeleteBeginResponse{
+			Status: po.Status2Pb(status),
+		}, nil
+	}
+
+	bizID, neededOrEvent, status := impl.userManager.DeleteBegin(ctx, userTokenInfo.ID, userTokenInfo.UserName,
+		po.AuthenticatorIdentitiesFromPb(request.GetAuthenticators()))
 
 	return &userpb.DeleteBeginResponse{
 		Status:         po.Status2Pb(status),
@@ -324,7 +341,14 @@ func (impl *serverImpl) ListUsers(ctx context.Context, request *userpb.ListUsers
 		}, nil
 	}
 
-	users, status := impl.userManager.ListUsers(ctx, token)
+	_, status := impl.userTokenManager.ExplainToken(ctx, token)
+	if status.Code != bizuserinters.StatusCodeOk {
+		return &userpb.ListUsersResponse{
+			Status: po.Status2Pb(status),
+		}, nil
+	}
+
+	users, status := impl.userManager.ListUsers(ctx)
 
 	return &userpb.ListUsersResponse{
 		Status:    po.Status2Pb(status),
@@ -348,12 +372,16 @@ func (impl *serverImpl) CheckToken(ctx context.Context, request *userpb.CheckTok
 		}, nil
 	}
 
-	ssoToken, origin, userTokenInfo, status := impl.userManager.CheckToken(ctx, token, request.GetSsoJumpUrl())
+	info, status := impl.userTokenManager.ExplainToken(ctx, token)
+	if status.Code != bizuserinters.StatusCodeOk {
+		return &userpb.CheckTokenResponse{
+			Status: po.Status2Pb(status),
+		}, nil
+	}
 
 	return &userpb.CheckTokenResponse{
 		Status:    po.Status2Pb(status),
-		TokenInfo: po.UserTokenInfo2Pb(userTokenInfo, origin),
-		SsoToken:  ssoToken,
+		TokenInfo: po.UserTokenInfo2Pb(info),
 	}, nil
 }
 
@@ -373,14 +401,14 @@ func (impl *serverImpl) RenewToken(ctx context.Context, request *userpb.RenewTok
 		}, nil
 	}
 
-	newToken, userTokenInfo, status := impl.userManager.RenewToken(ctx, token)
+	newTokenStr, info, status := impl.userTokenManager.RenewToken(ctx, token)
 	if status.Code != bizuserinters.StatusCodeOk {
 		return &userpb.RenewTokenResponse{
 			Status: po.Status2Pb(status),
 		}, nil
 	}
 
-	err = impl.SetUserTokenCookie(ctx, newToken.Token, newToken.Expiration)
+	err = impl.SetUserTokenCookie(ctx, newTokenStr, info.Expiration)
 	if err != nil {
 		return &userpb.RenewTokenResponse{
 			Status: po.StatusCode2PbWithError(bizuserinters.StatusCodeInternalError, err),
@@ -389,8 +417,8 @@ func (impl *serverImpl) RenewToken(ctx context.Context, request *userpb.RenewTok
 
 	return &userpb.RenewTokenResponse{
 		Status:    po.Status2Pb(status),
-		NewToken:  newToken.Token,
-		TokenInfo: po.UserTokenInfo2Pb(userTokenInfo, newToken.Origin),
+		NewToken:  token,
+		TokenInfo: po.UserTokenInfo2Pb(info),
 	}, nil
 }
 
@@ -412,7 +440,7 @@ func (impl *serverImpl) Logout(ctx context.Context, request *userpb.LogoutReques
 
 	_ = impl.UnsetUserTokenCookie(ctx, token)
 
-	status := impl.userManager.Logout(ctx, token)
+	status := impl.userTokenManager.DeleteToken(ctx, token)
 
 	return &userpb.LogoutResponse{
 		Status: po.Status2Pb(status),

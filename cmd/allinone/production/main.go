@@ -9,12 +9,10 @@ import (
 	"github.com/s-min-sys/userbe/internal/authenticatorserver/userpass"
 	"github.com/s-min-sys/userbe/internal/config"
 	"github.com/s-min-sys/userbe/internal/server"
-	"github.com/s-min-sys/userbe/internal/ssohttp"
 	"github.com/s-min-sys/userbe/internal/userserver"
+	"github.com/s-min-sys/userbe/internal/usertokenmanager/redis"
 	"github.com/sbasestarter/bizuserlib/impl/mongo/model/authenticator/model"
 	"github.com/sbasestarter/bizuserlib/impl/redis/tokenmanager"
-	"github.com/sbasestarter/bizuserlib/impl/redis/usertokenmanager"
-	"github.com/sbasestarter/bizuserlib/sso"
 	"github.com/sgostarter/libeasygo/stg/mongoex"
 	"github.com/sgostarter/libeasygo/stg/redisex"
 	"github.com/sgostarter/libservicetoolset/servicetoolset"
@@ -54,7 +52,7 @@ func main() {
 	}
 
 	tokenManager := tokenmanager.NewRedisTokenManager(redisCli, "", nil)
-	jwtDataStorage := usertokenmanager.NewRedisJWTDataStorage(redisCli, nil)
+	jwtDataStorage := redis.NewRedisJWTDataStorage(redisCli, nil)
 	// "mongodb://mongo_default_user:mongo_default_pass@127.0.0.1:8309/my_db"
 	mongoCli, opts, err := mongoex.InitMongo(cfg.UserMongoDSN)
 	if err != nil {
@@ -64,16 +62,9 @@ func main() {
 	}
 
 	dbModel := model.NewMongoDBModel(mongoCli, opts.Auth.AuthSource, "users", tokenManager, nil)
-	instances := server.NewInstances(tokenManager, jwtDataStorage, dbModel, sso.NewCfgSSO(cfg.SSOJumpWhiteList), cfg)
+	instances := server.NewInstances(tokenManager, jwtDataStorage, dbModel, cfg)
 
-	us := userserver.NewServer(instances.UserManager, cfg.DefaultDomain)
-
-	if cfg.SSOHttpListen != "" {
-		go func() {
-			ssoHTTPServer := ssohttp.NewServer(us, cfg.DefaultDomain)
-			ssoHTTPServer.ListenAndServe(cfg.SSOHttpListen)
-		}()
-	}
+	us := userserver.NewServer(instances.UserManager, instances.UserTokenManager, cfg.DefaultDomain)
 
 	err = s.Start(func(s *grpc.Server) error {
 		userpb.RegisterUserServicerServer(s, us)

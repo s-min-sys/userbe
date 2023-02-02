@@ -2,36 +2,35 @@ package server
 
 import (
 	"github.com/s-min-sys/userbe/internal/config"
+	"github.com/s-min-sys/userbe/internal/usertokenmanager"
+	"github.com/s-min-sys/userbe/internal/usertokenmanager/usertokenmanagerinters"
 	"github.com/sbasestarter/bizuserlib"
 	"github.com/sbasestarter/bizuserlib/authenticator/admin"
 	"github.com/sbasestarter/bizuserlib/authenticator/google2fa"
 	"github.com/sbasestarter/bizuserlib/authenticator/userpass"
 	"github.com/sbasestarter/bizuserlib/bizuserinters"
 	authenticatorinters "github.com/sbasestarter/bizuserlib/bizuserinters/model/authenticator"
-	usertokenmanagerinters "github.com/sbasestarter/bizuserlib/bizuserinters/usertokenmanager"
 	"github.com/sbasestarter/bizuserlib/model/authenticator"
 	"github.com/sbasestarter/bizuserlib/model/authenticator/model"
 	"github.com/sbasestarter/bizuserlib/policy"
-	"github.com/sbasestarter/bizuserlib/usertokenmanager"
 )
 
 type Instances struct {
 	UserManager            bizuserinters.UserManager
+	UserTokenManager       usertokenmanagerinters.UserTokenManager
 	UserPassAuthenticator  userpass.Authenticator
 	Google2FAAuthenticator google2fa.Authenticator
 	AdminAuthenticator     admin.Authenticator
 }
 
 func NewInstances(tokenManagerAll bizuserinters.TokenManagerAll, jwtDataStorage usertokenmanagerinters.JWTDataStorage,
-	dbModel authenticatorinters.DBModel, s bizuserlib.SSO, cfg *config.Config) *Instances {
+	dbModel authenticatorinters.DBModel, cfg *config.Config) *Instances {
 	userTokenManager := usertokenmanager.NewJWTUserTokenManager("x", jwtDataStorage)
 	ply := policy.DefaultConditionAuthenticatorPolicy(tokenManagerAll)
 
 	userManagerModel := model.NewUserManagerModel(dbModel)
 
-	userManager := bizuserlib.NewUserManager(tokenManagerAll, userTokenManager,
-		ply, ply, ply, ply,
-		userManagerModel, dbModel, s, nil)
+	userManager := bizuserlib.NewUserManager(tokenManagerAll, ply, ply, ply, ply, userManagerModel, dbModel, nil)
 
 	tokenManagerModel := authenticator.NewDirectTokenManagerModel(tokenManagerAll)
 	userPassModel := model.NewUserPassModel(dbModel, tokenManagerModel)
@@ -55,6 +54,7 @@ func NewInstances(tokenManagerAll bizuserinters.TokenManagerAll, jwtDataStorage 
 
 	return &Instances{
 		UserManager:            userManager,
+		UserTokenManager:       userTokenManager,
 		UserPassAuthenticator:  userPassAuthenticator,
 		Google2FAAuthenticator: google2FAAuthenticator,
 		AdminAuthenticator:     adminAuthenticator,

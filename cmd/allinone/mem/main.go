@@ -9,12 +9,10 @@ import (
 	"github.com/s-min-sys/userbe/internal/authenticatorserver/userpass"
 	"github.com/s-min-sys/userbe/internal/config"
 	"github.com/s-min-sys/userbe/internal/server"
-	"github.com/s-min-sys/userbe/internal/ssohttp"
 	"github.com/s-min-sys/userbe/internal/userserver"
+	"github.com/s-min-sys/userbe/internal/usertokenmanager"
 	"github.com/sbasestarter/bizuserlib/model/authenticator/model"
-	"github.com/sbasestarter/bizuserlib/sso"
 	"github.com/sbasestarter/bizuserlib/tokenmanager"
-	"github.com/sbasestarter/bizuserlib/usertokenmanager"
 	"github.com/sgostarter/libservicetoolset/servicetoolset"
 	"google.golang.org/grpc"
 )
@@ -47,16 +45,9 @@ func main() {
 	tokenManager := tokenmanager.NewMemoryTokenManager()
 	jwtDataStorage := usertokenmanager.NewMemoryJWTDataStorage()
 	dbModel := model.NewMemoryDBModel(tokenManager)
-	instances := server.NewInstances(tokenManager, jwtDataStorage, dbModel, sso.NewCfgSSO(cfg.SSOJumpWhiteList), cfg)
+	instances := server.NewInstances(tokenManager, jwtDataStorage, dbModel, cfg)
 
-	us := userserver.NewServer(instances.UserManager, cfg.DefaultDomain)
-
-	if cfg.SSOHttpListen != "" {
-		go func() {
-			ssoHTTPServer := ssohttp.NewServer(us, cfg.DefaultDomain)
-			ssoHTTPServer.ListenAndServe(cfg.SSOHttpListen)
-		}()
-	}
+	us := userserver.NewServer(instances.UserManager, instances.UserTokenManager, cfg.DefaultDomain)
 
 	err = s.Start(func(s *grpc.Server) error {
 		userpb.RegisterUserServicerServer(s, us)
