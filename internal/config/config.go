@@ -22,6 +22,10 @@ type Config struct {
 	DefaultDomain string `yaml:"DefaultDomain"`
 
 	DebugCfg DebugCfg `yaml:"DebugCfg"`
+
+	OAuthListen string `yaml:"OAuthListen"`
+
+	OAuthClientCredentials map[string]OAuthClientCredential `yaml:"OAuthClientCredentials"`
 }
 
 type DebugCfgAuthenticatorGoogle2FA struct {
@@ -31,6 +35,11 @@ type DebugCfgAuthenticatorGoogle2FA struct {
 
 type DebugCfg struct {
 	AuthenticatorGoogle2FA *DebugCfgAuthenticatorGoogle2FA `yaml:"AuthenticatorGoogle2FA"`
+}
+
+type OAuthClientCredential struct {
+	Secret string `yaml:"Secret"`
+	Domain string `yaml:"Domain"`
 }
 
 var (

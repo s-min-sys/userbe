@@ -8,6 +8,7 @@ import (
 	"github.com/s-min-sys/userbe/internal/authenticatorserver/google2fa"
 	"github.com/s-min-sys/userbe/internal/authenticatorserver/userpass"
 	"github.com/s-min-sys/userbe/internal/config"
+	"github.com/s-min-sys/userbe/internal/oauthserver"
 	"github.com/s-min-sys/userbe/internal/server"
 	"github.com/s-min-sys/userbe/internal/userserver"
 	"github.com/s-min-sys/userbe/internal/usertokenmanager"
@@ -64,6 +65,17 @@ func main() {
 	}
 
 	cfg.Logger.Info("Server Listen on :", cfg.Listen)
+
+	if cfg.OAuthListen != "" {
+		go func() {
+			oAuthServer := oauthserver.NewOAuth2Server(oauthserver.OAuth2ServerConfigs{
+				URLLogin:          "/biz?op=login&redirected=oauth",
+				URLAuth:           "/auth",
+				ClientCredentials: cfg.OAuthClientCredentials,
+			}, oauthserver.NewLoginHelper(instances.UserTokenManager), nil)
+			oAuthServer.Go(cfg.OAuthListen)
+		}()
+	}
 
 	s.Wait()
 }
